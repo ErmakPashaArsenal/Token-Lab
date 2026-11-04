@@ -110,6 +110,11 @@ a {
   background: var(--ink-2);
 }
 
+.btn-primary:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
 .btn-secondary {
   height: 32px;
   padding: 0 12px;

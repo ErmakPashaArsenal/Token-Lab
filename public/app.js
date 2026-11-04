@@ -30,7 +30,10 @@ const PAIRS = [
   ['Успіх', 'success', 'surface', 'text'],
 ];
 
-const state = { tokens: null, exportTab: 'css' };
+const SHARED_PATH = /^\/p\/([a-z0-9]{6})\/?$/;
+
+// sharedHex: the palette the current /p/:id link points to, so the URL can drop it once the color changes.
+const state = { tokens: null, exportTab: 'css', sharedHex: null };
 
 const $ = (id) => document.getElementById(id);
 const els = {
@@ -201,6 +204,10 @@ function setHex(hex) {
   state.tokens = buildTokens(hex);
   showError(false);
   render();
+  if (state.sharedHex && state.tokens.brandHex !== state.sharedHex) {
+    state.sharedHex = null;
+    history.replaceState(null, '', '/');
+  }
 }
 
 function showError(visible) {
@@ -242,7 +249,7 @@ function copyWithTextarea(text) {
 }
 
 // Some embedded browsers leave clipboard.writeText pending forever, so it gets a deadline.
-async function copy(text) {
+async function copy(text, message = 'Скопійовано') {
   let ok;
   try {
     await Promise.race([
@@ -253,7 +260,7 @@ async function copy(text) {
   } catch {
     ok = copyWithTextarea(text);
   }
-  toast(ok ? 'Скопійовано' : 'Не вдалося скопіювати');
+  toast(ok ? message : 'Не вдалося скопіювати');
 }
 
 // ---------- events ----------
@@ -306,10 +313,49 @@ $('export-tabs').addEventListener('keydown', (e) => {
   $(`tab-${state.exportTab}`).focus();
 });
 
-// Sharing lands in step 4 (Pages Functions + D1).
-$('share').addEventListener('click', () => toast('Коротке посилання з’явиться на наступному кроці'));
+async function share() {
+  const button = $('share');
+  button.disabled = true;
+  button.textContent = 'Зберігаю…';
+  try {
+    const res = await fetch('/api/palettes', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ hex: state.tokens.brandHex }),
+    });
+    if (!res.ok) throw new Error(res.status);
+    const { id, url } = await res.json();
+    state.sharedHex = state.tokens.brandHex;
+    history.replaceState(null, '', `/p/${id}`);
+    await copy(url, 'Посилання скопійовано');
+  } catch {
+    toast('Не вдалося зберегти палітру');
+  } finally {
+    button.disabled = false;
+    button.textContent = 'Поділитися';
+  }
+}
+
+$('share').addEventListener('click', share);
 
 // ---------- start ----------
 
+async function loadShared(id) {
+  try {
+    const res = await fetch(`/api/palettes/${id}`);
+    if (!res.ok) throw new Error(res.status);
+    const { hex } = await res.json();
+    els.input.value = bare(hex);
+    setHex(hex);
+    state.sharedHex = state.tokens.brandHex;
+  } catch {
+    history.replaceState(null, '', '/');
+    toast('Палітру за посиланням не знайдено');
+  }
+}
+
 els.input.value = bare(DEFAULT_HEX);
 setHex(DEFAULT_HEX);
+
+const sharedId = location.pathname.match(SHARED_PATH)?.[1];
+if (sharedId) loadShared(sharedId);
