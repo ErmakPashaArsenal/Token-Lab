@@ -5,5 +5,4 @@ compatibility_date = "2025-07-18"
 [[d1_databases]]
 binding = "DB"
 database_name = "token-lab"
-# Placeholder for local dev. Before deploy: `npx wrangler d1 create token-lab` and paste the real id here.
-database_id = "00000000-0000-0000-0000-000000000000"
+database_id = "15f07d28-57fc-4e0e-a0ba-0690d1552814"
