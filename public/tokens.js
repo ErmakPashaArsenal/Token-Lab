@@ -17,8 +17,8 @@ export const TOKENS = [
 ];
 
 const WHITE = '#ffffff';
-const DANGER_HEX = '#e5484d';
-const SUCCESS_HEX = '#30a46c';
+const DANGER_HEX = '#dc2626';
+const SUCCESS_HEX = '#16a34a';
 const UI_CONTRAST = 3; // WCAG 1.4.11: buttons and other UI parts against the background
 const TEXT_CONTRAST = 4.5; // WCAG AA for normal text
 
@@ -75,15 +75,15 @@ export function buildTokens(hex) {
 
   const refs = {
     light: {
-      bg: 'white',
-      surface: LIGHTEST,
+      bg: LIGHTEST,
+      surface: 'white',
       text: DARKEST,
-      'text-muted': 'neutral-700',
-      border: 'neutral-100',
+      'text-muted': 'neutral-600',
+      border: 'neutral-200',
       accent: lightAccent,
       'accent-hover': hoverRef(brandStep),
       'on-accent': onAccentRef(lightAccent),
-      danger: 'danger-700',
+      danger: 'danger-600',
       success: 'success-700',
     },
     dark: {
@@ -96,7 +96,7 @@ export function buildTokens(hex) {
       'accent-hover': hoverRef(darkStep),
       'on-accent': onAccentRef(darkAccent),
       danger: 'danger-300',
-      success: 'success-300',
+      success: 'success-400',
     },
   };
 
@@ -130,7 +130,7 @@ export function toCSS(t) {
   const primitives = t.primitives.map(([ref, hex]) => `--${ref}: ${hex};`);
   const semantic = (theme) => TOKENS.map((name) => `--${name}: var(--${t.themes[theme][name].ref});`);
   return [
-    cssBlock(':root', ['/* Primitives */', ...primitives, '', '/* Light */', ...semantic('light')]),
+    `/* Token Lab - ${t.brandHex} */\n${cssBlock(':root', ['/* Primitives */', ...primitives, '', '/* Light */', ...semantic('light')])}`,
     cssBlock('[data-theme="dark"]', semantic('dark')),
   ].join('\n\n') + '\n';
 }

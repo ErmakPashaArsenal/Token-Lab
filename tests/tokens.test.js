@@ -53,8 +53,11 @@ test('readable text in both themes', () => {
       assert.ok(contrast(T.text.hex, T.bg.hex) >= 7, `${brand} ${theme} text`);
       assert.ok(contrast(T.text.hex, T.surface.hex) >= 7, `${brand} ${theme} text on surface`);
       assert.ok(contrast(T['text-muted'].hex, T.surface.hex) >= 4.5, `${brand} ${theme} muted`);
-      assert.ok(contrast(T.danger.hex, T.bg.hex) >= 4.5, `${brand} ${theme} danger`);
-      assert.ok(contrast(T.success.hex, T.bg.hex) >= 4.5, `${brand} ${theme} success`);
+      assert.ok(contrast(T['text-muted'].hex, T.bg.hex) >= 4.5, `${brand} ${theme} muted on bg`);
+      for (const status of ['danger', 'success']) {
+        assert.ok(contrast(T[status].hex, T.bg.hex) >= 4.5, `${brand} ${theme} ${status}`);
+        assert.ok(contrast(T[status].hex, T.surface.hex) >= 4.5, `${brand} ${theme} ${status} on surface`);
+      }
     }
   }
 });

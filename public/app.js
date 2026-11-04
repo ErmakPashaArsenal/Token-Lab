@@ -1,6 +1,6 @@
 // UI: state, render, events. Color math lives in color.js, tokens in tokens.js.
 
-import { STEPS, contrast, contrastLevel, normalizeHex } from './color.js';
+import { STEPS, contrast, contrastLevel, hexToOklch, normalizeHex } from './color.js';
 import { TOKENS, buildTokens, toCSS, toJSON, toTailwind } from './tokens.js';
 
 const DEFAULT_HEX = '#4f46e5';
@@ -8,24 +8,34 @@ const DEFAULT_HEX = '#4f46e5';
 const PRESETS = [
   ['Індиго', '#4F46E5'],
   ['Жовтий', '#FACC15'],
-  ['Червоний', '#E5484D'],
-  ['Бірюза', '#12A594'],
-  ['Синій', '#3B5BFD'],
-  ['Помаранч', '#F97316'],
-  ['Графіт', '#334155'],
+  ['Бірюза', '#0F766E'],
+  ['Теракота', '#E4572E'],
 ];
 
 const EXPORTS = {
-  css: { label: 'CSS', file: 'tokens.css', build: toCSS },
-  tailwind: { label: 'Tailwind', file: 'app.css · Tailwind v4', build: toTailwind },
-  json: { label: 'JSON', file: 'tokens.json', build: toJSON },
+  css: { label: 'CSS', build: toCSS },
+  tailwind: { label: 'Tailwind', build: toTailwind },
+  json: { label: 'Figma JSON', build: toJSON },
 };
+
+// Pairs checked on the live UI: [label, foreground, background, kind].
+// Text needs 4.5:1, a UI part (button against the page) needs 3:1.
+const PAIRS = [
+  ['Текст на фоні', 'text', 'bg', 'text'],
+  ['Другорядний текст', 'text-muted', 'bg', 'text'],
+  ['Текст у картці', 'text', 'surface', 'text'],
+  ['Підпис кнопки', 'on-accent', 'accent', 'text'],
+  ['Кнопка на фоні', 'accent', 'bg', 'ui'],
+  ['Помилка', 'danger', 'surface', 'text'],
+  ['Успіх', 'success', 'surface', 'text'],
+];
 
 const state = { tokens: null, exportTab: 'css' };
 
 const $ = (id) => document.getElementById(id);
 const els = {
   input: $('hex-input'),
+  field: document.querySelector('.hex-field'),
   error: $('hex-error'),
   picker: $('picker'),
 };
@@ -38,28 +48,40 @@ function parseHex(value) {
   }
 }
 
-const upper = (hex) => hex.toUpperCase();
+const bare = (hex) => hex.slice(1).toUpperCase();
 // Floor, so 4.497 never shows up as a passing 4.50.
-const ratioText = (r) => `${(Math.floor(r * 100) / 100).toFixed(2)}:1`;
-const levelSlug = (level) => level.toLowerCase().replace(' ', '-');
+const floorTo = (r, digits) => (Math.floor(r * 10 ** digits) / 10 ** digits).toFixed(digits);
+
+// UI parts are judged on the large-text scale: 3:1 is AA, 4.5:1 is AAA.
+function levelOf(ratio, kind) {
+  if (kind === 'ui') return ratio >= 4.5 ? 'AAA' : ratio >= 3 ? 'AA' : 'Fail';
+  return contrastLevel(ratio);
+}
+
+const passes = (ratio, kind) => ratio >= (kind === 'ui' ? 3 : 4.5);
+const tone = (level) => (level === 'Fail' ? 'fail' : level === 'AA Large' ? 'large' : 'pass');
+
+function miniBadge(fg, bg, kind = 'text') {
+  const ratio = contrast(fg, bg);
+  const level = levelOf(ratio, kind);
+  return `<span class="mini-badge" data-level="${tone(level)}">${level} ${floorTo(ratio, 1)}</span>`;
+}
 
 // ---------- render ----------
 
 function render() {
   const t = state.tokens;
   const light = t.themes.light;
+  const { L, C, H } = hexToOklch(t.brandHex);
 
-  $('pill-dot').style.setProperty('--sw', t.brandHex);
-  $('pill-hex').textContent = upper(t.brandHex);
+  $('logo-mark').style.setProperty('--sw', t.brandHex);
   $('picker-fill').style.setProperty('--sw', t.brandHex);
   els.picker.value = t.brandHex;
-  $('meta-step').textContent = t.brandStep;
 
-  const onRatio = contrast(light['on-accent'].hex, light.accent.hex);
-  $('meta-on').textContent = light['on-accent'].ref === 'white' ? 'білий' : 'темний';
-  $('meta-ratio').textContent = `${ratioText(onRatio)} ${contrastLevel(onRatio)}`;
+  $('fact-step').textContent = `brand-${t.brandStep}`;
+  $('fact-oklch').textContent = `oklch(${(L * 100).toFixed(1)}% ${C.toFixed(3)} ${H.toFixed(1)})`;
+  $('fact-on').textContent = `on-accent ${light['on-accent'].ref}`;
 
-  renderHero(t);
   renderPresets(t.brandHex);
   renderScale($('scale-brand'), t.scales.brand, t.brandStep);
   renderScale($('scale-neutral'), t.scales.neutral);
@@ -69,24 +91,11 @@ function render() {
   renderExport();
 }
 
-function renderHero(t) {
-  const { accent, 'on-accent': on } = t.themes.light;
-  const hero = $('hero');
-  hero.style.setProperty('--t-accent', accent.hex);
-  hero.style.setProperty('--t-on-accent', on.hex);
-  const ratio = contrast(on.hex, accent.hex);
-  $('hero-title').textContent = upper(t.brandHex);
-  $('hero-sub').textContent = `Крок ${t.brandStep} · текст ${on.ref === 'white' ? 'білий' : 'темний'} · ${ratioText(ratio)} ${contrastLevel(ratio)}`;
-  $('hero-coins').innerHTML = [300, 500, 700, 900]
-    .map((step) => `<span class="coin" style="--sw:${t.scales.brand[step]}"></span>`)
-    .join('');
-}
-
 function renderPresets(current) {
   $('presets').innerHTML = PRESETS.map(([name, hex]) => {
     const active = normalizeHex(hex) === current;
     return `<button class="preset" type="button" data-hex="${hex}" aria-pressed="${active}">
-      <span class="swatch-dot" style="--sw:${hex}"></span><span>${name}</span>
+      <span class="preset-dot" style="--sw:${hex}"></span>${name}
     </button>`;
   }).join('');
 }
@@ -94,20 +103,22 @@ function renderPresets(current) {
 function renderScale(root, scale, brandStep) {
   root.innerHTML = STEPS.map((step) => {
     const hex = scale[step];
-    const tag = step === brandStep ? '<span class="swatch-tag">бренд</span>' : '';
-    return `<button class="swatch" type="button" data-copy="${upper(hex)}" aria-label="Копіювати ${step} ${upper(hex)}">
+    const tag = step === brandStep ? '<span class="swatch-tag">твій</span>' : '';
+    return `<button class="swatch" type="button" data-copy="${hex.toUpperCase()}" aria-label="Копіювати ${step} ${bare(hex)}">
       <span class="swatch-color" style="--sw:${hex}">${tag}</span>
-      <span class="swatch-meta"><span class="swatch-step">${step}</span><span class="swatch-hex">${upper(hex)}</span></span>
+      <span class="swatch-step">${step}</span>
+      <span class="swatch-hex">${bare(hex)}</span>
     </button>`;
   }).join('');
 }
 
 function tokenCell(label, { ref, hex }) {
   return `<td data-label="${label}">
-    <div class="token-value">
+    <span class="token-value">
       <span class="token-chip" style="--sw:${hex}"></span>
-      <span class="token-text"><span class="token-hex">${upper(hex)}</span><span class="token-ref">${ref}</span></span>
-    </div>
+      <span class="token-ref">${ref}</span>
+      <span class="token-hex">#${bare(hex)}</span>
+    </span>
   </td>`;
 }
 
@@ -121,62 +132,52 @@ function renderTokens(t) {
   ).join('');
 }
 
-function badge(label, fg, bg) {
-  const ratio = contrast(fg, bg);
-  const level = contrastLevel(ratio);
-  return `<li class="badge" data-level="${levelSlug(level)}">
-    <span>${label}</span><span class="badge-ratio">${ratioText(ratio)}</span><span class="badge-level">${level}</span>
-  </li>`;
-}
-
 function renderPreview(root, theme) {
   const c = (name) => theme[name].hex;
   const id = root.id;
+
+  const rows = PAIRS.map(([label, fg, bg, kind]) => {
+    const ratio = contrast(c(fg), c(bg));
+    const level = levelOf(ratio, kind);
+    return `<li class="pair">
+      <span class="pair-sample" style="--t-fg:${c(fg)};--t-bg:${c(bg)}" aria-hidden="true">Aa</span>
+      <span class="pair-label">${label} <span>· ${fg} / ${bg}</span></span>
+      <span class="pair-ratio">${floorTo(ratio, 2)}:1</span>
+      <span class="mini-badge" data-level="${tone(level)}">${level}</span>
+    </li>`;
+  });
+  const passed = PAIRS.filter(([, fg, bg, kind]) => passes(contrast(c(fg), c(bg)), kind)).length;
+
   root.innerHTML = `
-    <div class="preview-head">${root.dataset.themeName}</div>
+    <div class="preview-head">
+      <span class="preview-title">${root.dataset.themeName}</span>
+      <span class="preview-score">${passed}/${PAIRS.length} пройдено</span>
+    </div>
     <div class="pv-canvas">
-      <div class="pv-item">
-        <article class="pv-card">
-          <h3 class="pv-card-title">Картка</h3>
-          <p class="pv-card-text">Основний текст на surface.</p>
-          <p class="pv-card-meta"><span>Оновлено 2 хв тому</span><span class="pv-success">Збережено</span></p>
-        </article>
-        <ul class="badges">
-          ${badge('Текст', c('text'), c('surface'))}
-          ${badge('Другорядний', c('text-muted'), c('surface'))}
-          ${badge('Успіх', c('success'), c('surface'))}
-        </ul>
-      </div>
-      <div class="pv-item">
-        <div class="pv-fields">
-          <div>
-            <label class="pv-label" for="${id}-name">Назва</label>
-            <input class="pv-input" id="${id}-name" value="Token Lab">
-          </div>
-          <div>
-            <label class="pv-label" for="${id}-mail">Email</label>
-            <input class="pv-input is-invalid" id="${id}-mail" placeholder="name@studio.ua">
-            <p class="pv-error">Перевір адресу</p>
-          </div>
+      <article class="pv-card">
+        <div class="pv-row pv-top">
+          <span class="pv-eyebrow">Підписка</span>
+          <span class="pv-row"><span class="pv-status">Активна</span>${miniBadge(c('success'), c('surface'))}</span>
         </div>
-        <ul class="badges">
-          ${badge('Значення', c('text'), c('bg'))}
-          ${badge('Плейсхолдер', c('text-muted'), c('bg'))}
-          ${badge('Помилка', c('danger'), c('bg'))}
-        </ul>
-      </div>
-      <div class="pv-item">
-        <div class="pv-buttons">
-          <button class="pv-button" type="button">Зберегти</button>
-          <button class="pv-button is-hover" type="button" tabindex="-1">Hover</button>
+        <div class="pv-row">
+          <h3 class="pv-title">Pro для дизайнерів</h3>
+          <span class="pv-title-badge">${miniBadge(c('text'), c('surface'))}</span>
         </div>
-        <ul class="badges">
-          ${badge('Напис', c('on-accent'), c('accent'))}
-          ${badge('Hover', c('on-accent'), c('accent-hover'))}
-          ${badge('Кнопка на фоні', c('accent'), c('bg'))}
-        </ul>
-      </div>
-    </div>`;
+        <p class="pv-text">Безлімітні палітри, експорт у Figma і спільний доступ для команди.</p>
+        <label class="pv-label" for="${id}-mail">Email</label>
+        <input class="pv-input" id="${id}-mail" value="dmytro.uxhero" aria-invalid="true" aria-describedby="${id}-mail-error">
+        <p class="pv-row pv-error" id="${id}-mail-error">Бракує @ в адресі ${miniBadge(c('danger'), c('surface'))}</p>
+        <div class="pv-row pv-buttons">
+          <button class="pv-button" type="button">Оформити</button>
+          <button class="pv-button is-hover" type="button" tabindex="-1">Наведення</button>
+          <button class="pv-button is-ghost" type="button">Пізніше</button>
+          ${miniBadge(c('on-accent'), c('accent'))}
+        </div>
+      </article>
+      <p class="pv-row pv-meta">Оновлено 2 хв тому ${miniBadge(c('text-muted'), c('bg'))}</p>
+    </div>
+    <ul class="pairs">${rows.join('')}</ul>`;
+
   const canvas = root.querySelector('.pv-canvas');
   for (const name of TOKENS) canvas.style.setProperty(`--t-${name}`, theme[name].hex);
 }
@@ -190,10 +191,8 @@ function renderExport() {
           tabindex="${key === state.exportTab ? 0 : -1}">${label}</button>`,
     )
     .join('');
-  const current = EXPORTS[state.exportTab];
   $('export-panel').setAttribute('aria-labelledby', `tab-${state.exportTab}`);
-  $('export-name').textContent = current.file;
-  $('export-code').textContent = current.build(state.tokens);
+  $('export-code').textContent = EXPORTS[state.exportTab].build(state.tokens);
 }
 
 // ---------- actions ----------
@@ -207,6 +206,7 @@ function setHex(hex) {
 function showError(visible) {
   els.error.hidden = !visible;
   els.input.setAttribute('aria-invalid', String(visible));
+  els.field.classList.toggle('is-invalid', visible);
 }
 
 function commitInput() {
@@ -215,7 +215,7 @@ function commitInput() {
     showError(true);
     return;
   }
-  els.input.value = upper(hex);
+  els.input.value = bare(hex);
   setHex(hex);
 }
 
@@ -271,14 +271,14 @@ els.input.addEventListener('keydown', (e) => {
 });
 
 els.picker.addEventListener('input', () => {
-  els.input.value = upper(els.picker.value);
+  els.input.value = bare(els.picker.value);
   setHex(els.picker.value);
 });
 
 $('presets').addEventListener('click', (e) => {
   const button = e.target.closest('.preset');
   if (!button) return;
-  els.input.value = upper(button.dataset.hex);
+  els.input.value = bare(button.dataset.hex);
   setHex(button.dataset.hex);
 });
 
@@ -287,7 +287,6 @@ document.addEventListener('click', (e) => {
   if (swatch) copy(swatch.dataset.copy);
 });
 
-$('hero-copy').addEventListener('click', () => copy(upper(state.tokens.brandHex)));
 $('export-copy').addEventListener('click', () => copy($('export-code').textContent));
 
 $('export-tabs').addEventListener('click', (e) => {
@@ -307,19 +306,10 @@ $('export-tabs').addEventListener('keydown', (e) => {
   $(`tab-${state.exportTab}`).focus();
 });
 
-document.querySelector('.tabs').addEventListener('click', (e) => {
-  const tab = e.target.closest('.tab');
-  if (!tab) return;
-  document.querySelectorAll('.tab').forEach((t) => t.classList.toggle('is-active', t === tab));
-});
-
-$('sidebar-toggle').addEventListener('click', (e) => {
-  const collapsed = document.body.classList.toggle('sidebar-collapsed');
-  e.currentTarget.setAttribute('aria-expanded', String(!collapsed));
-  e.currentTarget.setAttribute('aria-label', collapsed ? 'Показати панель' : 'Сховати панель');
-});
+// Sharing lands in step 4 (Pages Functions + D1).
+$('share').addEventListener('click', () => toast('Коротке посилання з’явиться на наступному кроці'));
 
 // ---------- start ----------
 
-els.input.value = upper(DEFAULT_HEX);
+els.input.value = bare(DEFAULT_HEX);
 setHex(DEFAULT_HEX);
