@@ -4,7 +4,148 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Token Lab</title>
+  <meta name="description" content="Тональна шкала, семантичні токени і перевірка контрасту WCAG з одного бренд-кольору.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500&family=Inter:wght@400;500;600;700;800&display=swap">
+  <link rel="stylesheet" href="/styles.css">
+  <script type="module" src="/app.js"></script>
 </head>
 <body>
+  <header class="topbar">
+    <div class="topbar-left">
+      <button class="icon-btn sidebar-toggle" id="sidebar-toggle" type="button" aria-label="Сховати панель" aria-controls="sidebar" aria-expanded="true">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M20 6H10M20 12H4M20 18H10M7 9l-3 3 3 3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <a class="logo" href="/" aria-label="Token Lab, на головну">
+        <span class="logo-main">TOKEN</span>
+        <span class="logo-sub">LAB</span>
+      </a>
+    </div>
+    <div class="topbar-right">
+      <div class="brand-pill" aria-label="Поточний бренд-колір">
+        <span class="brand-pill-dot"><span class="swatch-dot" id="pill-dot"></span></span>
+        <span class="brand-pill-hex" id="pill-hex"></span>
+      </div>
+      <a class="btn-gold" href="#export">Експорт</a>
+    </div>
+  </header>
+
+  <div class="layout">
+    <aside class="sidebar" id="sidebar" aria-label="Налаштування палітри">
+      <section class="panel color-panel">
+        <div class="panel-row">
+          <label class="panel-label" for="hex-input">Бренд-колір</label>
+          <span class="panel-hint">Крок <b id="meta-step"></b></span>
+        </div>
+        <div class="hex-field">
+          <label class="picker" title="Пікер кольору">
+            <span class="picker-fill" id="picker-fill"></span>
+            <input id="picker" type="color" aria-label="Пікер кольору">
+          </label>
+          <input id="hex-input" class="hex-input" type="text" autocomplete="off" spellcheck="false" maxlength="7" placeholder="#4F46E5" aria-describedby="hex-error">
+        </div>
+        <p class="field-error" id="hex-error" role="alert" hidden>Невалідний hex. Введи 3 або 6 символів, наприклад #4F46E5.</p>
+      </section>
+
+      <section class="side-group" aria-labelledby="presets-title">
+        <h2 class="side-title" id="presets-title">Пресети</h2>
+        <div class="presets" id="presets"></div>
+      </section>
+
+      <a class="contrast-link" href="#preview">
+        <span class="contrast-link-ring" aria-hidden="true">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8.5" stroke="currentColor" stroke-width="1.8"/><path d="M12 3.5a8.5 8.5 0 0 1 0 17z" fill="currentColor"/></svg>
+        </span>
+        <span class="contrast-link-text">On-accent <span id="meta-on"></span></span>
+        <span class="contrast-chip" id="meta-ratio"></span>
+      </a>
+
+      <p class="side-note">Колір інтерфейсу і колір палітри різні: палітра живе тільки у свотчах і прев'ю.</p>
+    </aside>
+
+    <main class="main" id="main">
+      <section class="hero" id="hero" aria-labelledby="hero-title">
+        <div class="hero-body">
+          <p class="hero-eyebrow">Бренд-колір</p>
+          <h1 class="hero-title" id="hero-title"></h1>
+          <p class="hero-sub" id="hero-sub"></p>
+          <button class="btn-gold hero-btn" type="button" id="hero-copy">Копіювати hex</button>
+        </div>
+        <div class="hero-coins" id="hero-coins" aria-hidden="true"></div>
+      </section>
+
+      <nav class="tabs" aria-label="Розділи">
+        <a class="tab is-active" href="#scales">
+          <svg width="30" height="30" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="5" width="4" height="14" rx="1.5" fill="currentColor" opacity=".45"/><rect x="10" y="5" width="4" height="14" rx="1.5" fill="currentColor" opacity=".7"/><rect x="17" y="5" width="4" height="14" rx="1.5" fill="currentColor"/></svg>
+          <span>Шкала</span>
+        </a>
+        <a class="tab" href="#tokens">
+          <svg width="30" height="30" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="7" cy="7" r="3" fill="currentColor"/><path d="M13 7h8M13 17h8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="7" cy="17" r="3" fill="currentColor" opacity=".55"/></svg>
+          <span>Токени</span>
+        </a>
+        <a class="tab" href="#preview">
+          <svg width="30" height="30" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3" stroke="currentColor" stroke-width="2"/><rect x="6.5" y="13" width="7" height="3.5" rx="1.2" fill="currentColor"/></svg>
+          <span>Прев'ю</span>
+        </a>
+        <a class="tab" href="#export">
+          <svg width="30" height="30" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M8 8l-4 4 4 4M16 8l4 4-4 4M13.5 5l-3 14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span>Експорт</span>
+        </a>
+      </nav>
+
+      <section class="section" id="scales" aria-labelledby="scales-title">
+        <div class="section-head">
+          <h2 class="section-title" id="scales-title">Шкала <span class="count">50-950</span></h2>
+          <p class="section-aside">Клік по свотчу копіює hex</p>
+        </div>
+        <h3 class="row-title">Brand</h3>
+        <div class="swatches" id="scale-brand"></div>
+        <h3 class="row-title">Neutral</h3>
+        <div class="swatches" id="scale-neutral"></div>
+      </section>
+
+      <section class="section" id="tokens" aria-labelledby="tokens-title">
+        <div class="section-head">
+          <h2 class="section-title" id="tokens-title">Семантичні токени <span class="count">10</span></h2>
+        </div>
+        <div class="table-wrap">
+          <table class="tokens-table">
+            <thead>
+              <tr><th scope="col">Токен</th><th scope="col">Світла</th><th scope="col">Темна</th></tr>
+            </thead>
+            <tbody id="tokens-body"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="section" id="preview" aria-labelledby="preview-title">
+        <div class="section-head">
+          <h2 class="section-title" id="preview-title">Прев'ю і контраст <span class="count">WCAG</span></h2>
+          <p class="section-aside">AAA ≥ 7 · AA ≥ 4.5 · AA Large ≥ 3</p>
+        </div>
+        <div class="previews">
+          <div class="preview" id="preview-light" data-theme-name="Світла тема"></div>
+          <div class="preview" id="preview-dark" data-theme-name="Темна тема"></div>
+        </div>
+      </section>
+
+      <section class="section" id="export" aria-labelledby="export-title">
+        <div class="section-head">
+          <h2 class="section-title" id="export-title">Експорт</h2>
+          <div class="export-tabs" role="tablist" aria-label="Формат експорту" id="export-tabs"></div>
+        </div>
+        <div class="code-block">
+          <div class="code-bar">
+            <span class="code-name" id="export-name"></span>
+            <button class="btn-gold btn-sm" type="button" id="export-copy">Копіювати</button>
+          </div>
+          <pre class="code" id="export-panel" role="tabpanel" tabindex="0"><code id="export-code"></code></pre>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
 </body>
 </html>
