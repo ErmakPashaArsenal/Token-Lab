@@ -4,7 +4,7 @@
 
 ## Що це
 Token Lab - веб-інструмент для дизайнерів. Вводиш бренд-колір (hex) і отримуєш:
-1. Тональну шкалу 50…950 для brand і neutral, усі значення в hex.
+1. Тональну шкалу 50…950 (11 кроків: 50, 100, 200 … 900, 950) для brand і neutral, усі значення в hex.
 2. Семантичні токени: bg, surface, text, text-muted, border, accent, accent-hover, on-accent, danger, success. Світла і темна тема.
 3. Перевірку контрасту WCAG на живому UI (кнопка, картка, інпут) з бейджами AAA / AA / AA Large / Fail.
 4. Експорт: CSS variables, Tailwind (v4 `@theme`), tokens.json (variables: primitives → light / dark). Кнопки «Копіювати».

@@ -1,0 +1,9 @@
+name = "token-lab"
+pages_build_output_dir = "./public"
+compatibility_date = "2025-07-18"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "token-lab"
+# Placeholder for local dev. Before deploy: `npx wrangler d1 create token-lab` and paste the real id here.
+database_id = "00000000-0000-0000-0000-000000000000"
