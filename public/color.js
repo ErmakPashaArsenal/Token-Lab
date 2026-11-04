@@ -2,10 +2,10 @@
 // Internally colors are built in OKLCH (perceptual lightness), then mapped
 // into sRGB by lowering chroma only, so lightness and hue stay intact.
 
-export const STEPS = [100, 200, 300, 400, 500, 600, 700, 800, 900, 1000];
+export const STEPS = [50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950];
 
-const L_LIGHTEST = 0.97; // step 100
-const L_DARKEST = 0.24; // step 1000
+const L_LIGHTEST = 0.97; // step 50
+const L_DARKEST = 0.24; // step 950
 const CHROMA_FALLOFF = 0.5; // share of brand chroma lost by the scale ends
 const NEUTRAL_CHROMA = 0.012; // brand tint in the neutral scale
 
@@ -108,7 +108,7 @@ function nearestStepIndex(L) {
 
 const toScale = (values) => Object.fromEntries(STEPS.map((step, i) => [step, values[i]]));
 
-// Brand scale 100-1000. The brand hex sits unchanged on the step closest to its
+// Brand scale 50-950. The brand hex sits unchanged on the step closest to its
 // lightness; steps on each side are evenly spaced in lightness toward the ends.
 export function createScale(hex) {
   const brandHex = normalizeHex(hex);
@@ -131,7 +131,7 @@ export function createScale(hex) {
   );
 }
 
-// Neutral scale 100-1000 with a light tint of the brand hue.
+// Neutral scale 50-950 with a light tint of the brand hue.
 export function createNeutralScale(hex) {
   const brand = hexToOklch(hex);
   const C = Math.min(brand.C, NEUTRAL_CHROMA);

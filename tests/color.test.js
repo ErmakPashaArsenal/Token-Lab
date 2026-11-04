@@ -12,8 +12,8 @@ import {
 } from '../public/color.js';
 
 const HEX = /^#[0-9a-f]{6}$/;
-// Spec lightness targets for steps 100..1000 (OKLCH L), used to find the nearest step.
-const TARGET_L = STEPS.map((_, i) => 0.97 + ((0.24 - 0.97) * i) / 9);
+// Spec lightness targets for steps 50..950 (OKLCH L), used to find the nearest step.
+const TARGET_L = STEPS.map((_, i) => 0.97 + ((0.24 - 0.97) * i) / (STEPS.length - 1));
 // 8-bit rounding moves OKLCH lightness by up to ~0.003.
 const L_TOLERANCE = 0.006;
 
@@ -77,7 +77,7 @@ for (const brand of BRANDS) {
     const lch = values.map(hexToOklch);
     const brandLch = hexToOklch(brand);
 
-    await t.test('has steps 100..1000, hex only', () => {
+    await t.test('has steps 50..950, hex only', () => {
       assert.deepEqual(Object.keys(scale).map(Number), STEPS);
       for (const v of values) assert.match(v, HEX);
     });
